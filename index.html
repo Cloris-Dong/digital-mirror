@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Digital Mirror</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="mirror-frame">
+            <div class="mirror-surface">
+                <video id="webcam" autoplay muted playsinline></video>
+                <canvas id="distortion-canvas"></canvas>
+                <div class="overlay" id="overlay">
+                    <div class="system-status" id="system-status">
+                        <div class="status-text">SYSTEM READY</div>
+                        <div class="humanity-level" id="humanity-level">HUMANITY: 100%</div>
+                    </div>
+                </div>
+                <div class="instructions" id="instructions">
+                    <p>Look into the mirror and say:</p>
+                    <p class="command">"I am human"</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="verdict-overlay" id="verdict-overlay">
+            <div class="verdict-content">
+                <h1>SYSTEM VERDICT</h1>
+                <div class="verdict-text" id="verdict-text">
+                    Your image does not match known human templates.
+                </div>
+                <div class="verdict-subtext">
+                    Access denied. Human verification failed.
+                </div>
+                <button class="reset-button" id="reset-button">Try Again</button>
+            </div>
+        </div>
+        
+        <div class="error-message" id="error-message">
+            <p>Webcam access denied. Please allow camera permissions to experience The Digital Mirror.</p>
+            <button class="retry-button" id="retry-button">Retry</button>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
