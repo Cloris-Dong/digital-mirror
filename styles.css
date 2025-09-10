@@ -74,79 +74,49 @@ body {
     pointer-events: none;
 }
 
-.system-status {
+.humanity-level {
     position: absolute;
     top: 20px;
     left: 20px;
-    background: rgba(0, 0, 0, 0.8);
-    padding: 10px 15px;
-    border: 1px solid #00ff00;
-    border-radius: 5px;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.status-text {
     color: #00ff00;
-    margin-bottom: 5px;
-}
-
-.humanity-level {
-    color: #ffff00;
+    font-family: 'Courier New', monospace;
+    font-size: 1rem;
     font-weight: bold;
+    text-shadow: 0 0 10px #00ff00;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px 15px;
+    border-radius: 5px;
+    border: 1px solid #00ff00;
 }
 
-.instructions {
+.clean-instruction {
     position: absolute;
-    bottom: 20px;
+    bottom: 30px;
     left: 50%;
     transform: translateX(-50%);
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    font-size: 1.1rem;
     text-align: center;
-    background: rgba(0, 0, 0, 0.8);
-    padding: 15px 20px;
-    border: 1px solid #00ff00;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px 25px;
     border-radius: 5px;
-    font-size: 14px;
+    border: 1px solid #00ff00;
+    text-shadow: 0 0 10px #00ff00;
 }
 
-.instructions p {
-    margin: 5px 0;
-}
-
-.command {
-    font-size: 16px;
-    font-weight: bold;
-    color: #ffff00;
-    text-shadow: 0 0 10px #ffff00;
-}
-
-.audio-only {
-    font-size: 12px;
+.listening-indicator {
+    position: absolute;
+    top: 20px;
+    right: 20px;
     color: #00ff00;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-top: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
     opacity: 0.8;
-}
-
-.audio-status {
-    margin-top: 15px;
-    text-align: center;
-}
-
-.audio-status p {
-    color: #ffff00;
-    font-size: 14px;
-    margin-bottom: 10px;
-}
-
-.recognition-hint {
-    color: #00ff00;
-    font-size: 12px;
-    margin-top: 5px;
-    font-style: italic;
-    opacity: 0.8;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 8px 12px;
+    border-radius: 5px;
+    border: 1px solid #00ff00;
 }
 
 .verdict-overlay {

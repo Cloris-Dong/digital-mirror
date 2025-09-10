@@ -6,18 +6,14 @@ class DigitalMirror {
         this.canvas = document.getElementById('distortion-canvas');
         this.ctx = this.canvas.getContext('2d');
         this.overlay = document.getElementById('overlay');
-        this.systemStatus = document.getElementById('system-status');
         this.humanityLevel = document.getElementById('humanity-level');
-        this.instructions = document.getElementById('instructions');
+        this.cleanInstruction = document.getElementById('clean-instruction');
+        this.listeningIndicator = document.getElementById('listening-indicator');
         this.verdictOverlay = document.getElementById('verdict-overlay');
         this.verdictText = document.getElementById('verdict-text');
         this.resetButton = document.getElementById('reset-button');
         this.errorMessage = document.getElementById('error-message');
         this.retryButton = document.getElementById('retry-button');
-        this.audioStatus = document.getElementById('audio-status');
-        this.audioStatusText = document.getElementById('audio-status-text');
-        this.volumeLevel = document.getElementById('volume-level');
-        this.volumeFill = document.getElementById('volume-fill');
         
         this.distortionLevel = 0;
         this.maxDistortionLevel = 5;
@@ -109,8 +105,7 @@ class DigitalMirror {
     
     async setupAudioDetection() {
         try {
-            this.updateAudioStatus('Initializing...', '#ffff00');
-            this.updateInstructions('Setting up speech recognition...');
+            this.showListeningIndicator('Initializing...');
             
             // Try Web Speech API first
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -158,7 +153,7 @@ class DigitalMirror {
         // Handle start
         this.recognition.onstart = () => {
             console.log('Speech recognition started');
-            this.updateAudioStatus('Listening for "I am human"', '#00ff00');
+            this.showListeningIndicator('Listening...');
         };
         
         // Handle end
@@ -183,7 +178,6 @@ class DigitalMirror {
         try {
             this.recognition.start();
             this.isListening = true;
-            this.updateInstructions('Say "I am human" to trigger distortion.');
             console.log('Speech recognition initialization complete');
         } catch (error) {
             console.error('Failed to start speech recognition:', error);
@@ -243,13 +237,13 @@ class DigitalMirror {
         if (shouldRestart && this.isListening) {
             this.retryCount++;
             if (this.retryCount <= this.maxRetries) {
-                this.updateAudioStatus(`Restarting... (${this.retryCount}/${this.maxRetries})`, '#ffff00');
+                this.showListeningIndicator(`Restarting... (${this.retryCount}/${this.maxRetries})`);
                 // Restart recognition after a delay
                 setTimeout(() => {
                     if (this.isListening && this.recognition) {
                         try {
                             this.recognition.start();
-                            this.updateAudioStatus('Listening for "I am human"', '#00ff00');
+                            this.showListeningIndicator('Listening...');
                             console.log(`Speech recognition restarted (attempt ${this.retryCount})`);
                         } catch (restartError) {
                             console.error('Failed to restart speech recognition:', restartError);
@@ -262,7 +256,7 @@ class DigitalMirror {
                 this.fallbackToAlternativeMethods();
             }
         } else {
-            this.updateAudioStatus('Error: ' + errorMessage, '#ff0000');
+            this.showListeningIndicator('Error: ' + errorMessage);
             // Fall back to alternative methods for serious errors
             setTimeout(() => {
                 this.fallbackToAlternativeMethods();
@@ -280,10 +274,10 @@ class DigitalMirror {
         }
     }
     
-    updateAudioStatus(status, color) {
-        if (this.audioStatusText) {
-            this.audioStatusText.textContent = status;
-            this.audioStatusText.style.color = color;
+    showListeningIndicator(text) {
+        if (this.listeningIndicator) {
+            this.listeningIndicator.textContent = text;
+            this.listeningIndicator.style.display = text ? 'block' : 'none';
         }
     }
     
@@ -292,8 +286,7 @@ class DigitalMirror {
         this.fallbackActive = true;
         this.isListening = false;
         this.retryCount = 0; // Reset retry counter
-        this.updateStatus('FALLBACK MODE', '#ffaa00');
-        this.updateInstructions('Speech recognition failed. Use keyboard or click controls to advance distortion.');
+        this.showListeningIndicator('Fallback Mode');
         
         // Enable fallback controls
         this.enableFallbackControls();
@@ -363,7 +356,7 @@ class DigitalMirror {
         this.humanityPercentage = Math.max(0, 100 - (this.distortionLevel * 20));
         
         this.updateDistortion();
-        this.updateStatus('ANALYZING...', '#ffff00');
+        this.showListeningIndicator('Processing...');
         
         // Add glitch effect
         this.addGlitchEffect();
@@ -374,8 +367,11 @@ class DigitalMirror {
             }, 2000);
         } else {
             setTimeout(() => {
-                this.updateStatus(this.audioContext ? 'LISTENING...' : 'FALLBACK MODE', 
-                                this.audioContext ? '#00ff00' : '#ffaa00');
+                if (this.recognition) {
+                    this.showListeningIndicator('Listening...');
+                } else {
+                    this.showListeningIndicator('Fallback Mode');
+                }
             }, 1500);
         }
     }
@@ -392,11 +388,9 @@ class DigitalMirror {
         // Update humanity level display
         this.humanityLevel.textContent = `HUMANITY: ${this.humanityPercentage}%`;
         
-        // Update instructions
-        if (this.distortionLevel < this.maxDistortionLevel) {
-            this.updateInstructions(`Distortion Level: ${this.distortionLevel}/${this.maxDistortionLevel}`);
-        } else {
-            this.instructions.style.display = 'none';
+        // Update instruction visibility
+        if (this.distortionLevel >= this.maxDistortionLevel) {
+            this.cleanInstruction.style.display = 'none';
         }
     }
     
@@ -424,27 +418,6 @@ class DigitalMirror {
         glitch();
     }
     
-    updateStatus(text, color) {
-        const statusText = this.systemStatus.querySelector('.status-text');
-        statusText.textContent = text;
-        statusText.style.color = color;
-    }
-    
-    updateInstructions(message) {
-        this.instructions.innerHTML = `
-            <p>${message}</p>
-            <p class="command">"I am human"</p>
-            <p class="audio-only">AUDIO-ONLY INTERFACE</p>
-            <div class="audio-status" id="audio-status">
-                <p>Speech Recognition: <span id="audio-status-text">Ready</span></p>
-                <p class="recognition-hint">Say "I am human" clearly</p>
-            </div>
-        `;
-        
-        // Re-bind elements after DOM update
-        this.audioStatus = document.getElementById('audio-status');
-        this.audioStatusText = document.getElementById('audio-status-text');
-    }
     
     showVerdict() {
         this.verdictOverlay.style.display = 'flex';
@@ -478,21 +451,18 @@ class DigitalMirror {
         // Reset UI
         this.verdictOverlay.style.display = 'none';
         this.overlay.style.display = 'block';
-        this.instructions.style.display = 'block';
+        this.cleanInstruction.style.display = 'block';
         
         // Restart speech recognition if available
         if (this.recognition) {
             this.retryCount = 0; // Reset retry counter
             this.recognition.start();
             this.isListening = true;
-            this.updateInstructions('Say "I am human" to trigger distortion.');
-            this.updateStatus('LISTENING...', '#00ff00');
+            this.showListeningIndicator('Listening...');
         } else if (this.fallbackActive) {
-            this.updateInstructions('Press SPACEBAR, H key, or click the mirror to advance distortion level.');
-            this.updateStatus('FALLBACK MODE', '#ffaa00');
+            this.showListeningIndicator('Fallback Mode');
         } else {
-            this.updateInstructions('Look into the mirror and say:');
-            this.updateStatus('SYSTEM READY', '#00ff00');
+            this.showListeningIndicator('');
         }
         
         this.humanityLevel.textContent = 'HUMANITY: 100%';

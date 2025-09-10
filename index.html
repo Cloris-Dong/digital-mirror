@@ -13,19 +13,9 @@
                 <video id="webcam" autoplay muted playsinline></video>
                 <canvas id="distortion-canvas"></canvas>
                 <div class="overlay" id="overlay">
-                    <div class="system-status" id="system-status">
-                        <div class="status-text">SYSTEM READY</div>
-                        <div class="humanity-level" id="humanity-level">HUMANITY: 100%</div>
-                    </div>
-                </div>
-                <div class="instructions" id="instructions">
-                    <p>Look into the mirror and speak clearly:</p>
-                    <p class="command">"I am human"</p>
-                    <p class="audio-only">AUDIO-ONLY INTERFACE</p>
-                    <div class="audio-status" id="audio-status">
-                        <p>Speech Recognition: <span id="audio-status-text">Ready</span></p>
-                        <p class="recognition-hint">Say "I am human" clearly</p>
-                    </div>
+                    <div class="humanity-level" id="humanity-level">HUMANITY: 100%</div>
+                    <div class="clean-instruction" id="clean-instruction">Look into the mirror and say 'I am human'</div>
+                    <div class="listening-indicator" id="listening-indicator" style="display: none;">Listening...</div>
                 </div>
             </div>
         </div>
