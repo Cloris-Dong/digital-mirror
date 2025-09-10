@@ -1,4 +1,4 @@
-// The Digital Mirror - Interactive Web Art Piece
+// The Digital Mirror - Interactive Web Art Piece with Volume-Based Speech Detection
 
 class DigitalMirror {
     constructor() {
@@ -14,14 +14,32 @@ class DigitalMirror {
         this.resetButton = document.getElementById('reset-button');
         this.errorMessage = document.getElementById('error-message');
         this.retryButton = document.getElementById('retry-button');
-        this.speechFeedback = document.getElementById('speech-feedback');
-        this.detectedText = document.getElementById('detected-text');
+        this.audioStatus = document.getElementById('audio-status');
+        this.audioStatusText = document.getElementById('audio-status-text');
+        this.volumeLevel = document.getElementById('volume-level');
+        this.volumeFill = document.getElementById('volume-fill');
         
         this.distortionLevel = 0;
         this.maxDistortionLevel = 5;
         this.humanityPercentage = 100;
         this.isListening = false;
-        this.recognition = null;
+        this.fallbackActive = false;
+        
+        // Audio analysis properties
+        this.audioContext = null;
+        this.analyser = null;
+        this.microphone = null;
+        this.dataArray = null;
+        this.volumeThreshold = 25; // Adjust this value for sensitivity
+        this.cooldownTime = 2000; // 2 seconds between triggers
+        this.lastTriggerTime = 0;
+        this.animationId = null;
+        this.isProcessing = false;
+        
+        // Speech recognition retry properties
+        this.retryCount = 0;
+        this.maxRetries = 5;
+        this.retryDelay = 2000; // 2 seconds between retries
         
         this.init();
     }
@@ -29,8 +47,9 @@ class DigitalMirror {
     async init() {
         try {
             await this.setupWebcam();
-            this.setupSpeechRecognition();
+            await this.setupAudioDetection();
             this.setupEventListeners();
+            this.setupFallbackControls();
             this.startDistortionLoop();
         } catch (error) {
             console.error('Initialization failed:', error);
@@ -88,190 +107,236 @@ class DigitalMirror {
         this.showError(errorMessage);
     }
     
-    setupSpeechRecognition() {
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            this.recognition = new SpeechRecognition();
+    async setupAudioDetection() {
+        try {
+            this.updateAudioStatus('Initializing...', '#ffff00');
+            this.updateInstructions('Setting up speech recognition...');
             
-            // Enhanced speech recognition settings
-            this.recognition.continuous = true;
-            this.recognition.interimResults = true; // Enable interim results for better feedback
-            this.recognition.lang = 'en-US';
-            this.recognition.maxAlternatives = 5; // Get more alternatives
+            // Try Web Speech API first
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                await this.setupSpeechRecognition();
+            } else {
+                throw new Error('Speech recognition not supported');
+            }
             
-            this.recognition.onstart = () => {
-                this.isListening = true;
-                this.updateStatus('LISTENING...', '#ffff00');
-                this.updateInstructions('Speak clearly: "I am human"');
-                console.log('🎤 Speech recognition started');
-            };
+        } catch (error) {
+            console.error('Speech recognition setup failed:', error);
+            this.fallbackToAlternativeMethods();
+        }
+    }
+    
+    async setupSpeechRecognition() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        this.recognition = new SpeechRecognition();
+        
+        // Configure recognition
+        this.recognition.continuous = true;
+        this.recognition.interimResults = false;
+        this.recognition.lang = 'en-US';
+        this.recognition.maxAlternatives = 1;
+        
+        // Handle results
+        this.recognition.onresult = (event) => {
+            const lastResult = event.results[event.results.length - 1];
+            const transcript = lastResult[0].transcript.toLowerCase().trim();
             
-            this.recognition.onresult = (event) => {
-                console.log('🎤 Speech recognition result event:', event);
-                
-                // Process all results
-                for (let i = 0; i < event.results.length; i++) {
-                    const result = event.results[i];
-                    const isFinal = result.isFinal;
-                    
-                    console.log(`🎤 Result ${i} (${isFinal ? 'FINAL' : 'INTERIM'}):`, result);
-                    
-                    // Check all alternatives for this result
-                    for (let j = 0; j < result.length; j++) {
-                        const alternative = result[j];
-                        const transcript = alternative.transcript.toLowerCase().trim();
-                        const confidence = alternative.confidence || 'N/A';
-                        
-                        console.log(`🎤 Alternative ${j}: "${transcript}" (confidence: ${confidence})`);
-                        
-                        // Show visual feedback of what's being detected
-                        this.showSpeechFeedback(transcript, confidence, isFinal);
-                        
-                        // Check for phrase match
-                        if (this.checkPhraseMatch(transcript)) {
-                            console.log('✅ PHRASE MATCHED! Processing human claim...');
-                            this.processHumanClaim();
-                            return; // Exit early on match
-                        }
-                    }
-                }
-                
-                // If we get here, no phrase was matched
-                if (event.results.length > 0) {
-                    const lastResult = event.results[event.results.length - 1];
-                    if (lastResult.isFinal) {
-                        console.log('❌ No matching phrase detected in final result');
-                        this.showSpeechFeedback('No match detected', 'N/A', true);
-                    }
-                }
-            };
+            console.log('Speech detected:', transcript);
             
-            this.recognition.onerror = (event) => {
-                console.error('🎤 Speech recognition error:', event.error);
-                this.handleSpeechError(event.error);
-            };
-            
-            this.recognition.onend = () => {
-                console.log('🎤 Speech recognition ended');
-                this.isListening = false;
-                this.updateStatus('SYSTEM READY', '#00ff00');
-                this.updateInstructions('Speak clearly: "I am human"');
-                
-                // Restart recognition after a short delay
+            // Check for "I am human" variations
+            if (this.detectHumanPhrase(transcript)) {
+                console.log('Human phrase detected!');
+                this.processHumanClaim();
+            }
+        };
+        
+        // Handle errors
+        this.recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            this.handleSpeechError(event.error);
+        };
+        
+        // Handle start
+        this.recognition.onstart = () => {
+            console.log('Speech recognition started');
+            this.updateAudioStatus('Listening for "I am human"', '#00ff00');
+        };
+        
+        // Handle end
+        this.recognition.onend = () => {
+            console.log('Speech recognition ended');
+            if (this.isListening) {
+                // Restart recognition if we're still supposed to be listening
                 setTimeout(() => {
-                    if (!this.isListening && this.distortionLevel < this.maxDistortionLevel) {
+                    if (this.isListening && this.recognition) {
                         try {
-                            console.log('🎤 Restarting speech recognition...');
                             this.recognition.start();
                         } catch (error) {
-                            console.error('Failed to restart speech recognition:', error);
+                            console.error('Failed to restart recognition:', error);
+                            this.handleSpeechError('restart-failed');
                         }
                     }
-                }, 1000);
-            };
-            
-            // Start listening
-            try {
-                console.log('🎤 Starting speech recognition...');
-                this.recognition.start();
-            } catch (error) {
-                console.error('Failed to start speech recognition:', error);
-                this.handleSpeechError('startup');
+                }, 500); // Slightly longer delay
             }
-        } else {
-            console.warn('Speech recognition not supported');
-            this.updateStatus('SPEECH NOT SUPPORTED', '#ff0000');
-            this.updateInstructions('Speech recognition not available. Please use a modern browser.');
+        };
+        
+        // Start recognition
+        try {
+            this.recognition.start();
+            this.isListening = true;
+            this.updateInstructions('Say "I am human" to trigger distortion.');
+            console.log('Speech recognition initialization complete');
+        } catch (error) {
+            console.error('Failed to start speech recognition:', error);
+            this.handleSpeechError('start-failed');
         }
+    }
+    
+    detectHumanPhrase(transcript) {
+        // Check for various forms of "I am human"
+        const humanPhrases = [
+            'i am human',
+            'i am a human',
+            'i am the human',
+            'i am human being',
+            'i am a human being',
+            'i am the human being',
+            'i am human person',
+            'i am a human person',
+            'i am the human person'
+        ];
+        
+        return humanPhrases.some(phrase => transcript.includes(phrase));
     }
     
     handleSpeechError(error) {
         let errorMessage = '';
+        let shouldRestart = false;
+        
         switch (error) {
+            case 'aborted':
+                errorMessage = 'Speech recognition aborted. Restarting...';
+                shouldRestart = true;
+                break;
             case 'no-speech':
-                errorMessage = 'No speech detected. Please speak louder.';
+                errorMessage = 'No speech detected. Continuing to listen...';
+                shouldRestart = true;
                 break;
             case 'audio-capture':
                 errorMessage = 'Microphone not accessible. Please check permissions.';
                 break;
             case 'not-allowed':
-                errorMessage = 'Microphone permission denied. Please allow microphone access.';
+                errorMessage = 'Microphone permission denied. Please allow access.';
                 break;
             case 'network':
                 errorMessage = 'Network error. Please check your connection.';
                 break;
-            case 'startup':
-                errorMessage = 'Failed to start speech recognition. Please refresh the page.';
+            case 'service-not-allowed':
+                errorMessage = 'Speech recognition service not allowed.';
                 break;
             default:
-                errorMessage = 'Speech recognition error. Please try again.';
+                errorMessage = `Speech recognition error: ${error}`;
+                shouldRestart = true;
         }
         
-        this.updateStatus('SPEECH ERROR', '#ff0000');
-        this.updateInstructions(errorMessage);
+        console.error('Speech recognition error:', errorMessage);
         
-        // Retry after error
-        setTimeout(() => {
-            if (this.recognition && this.distortionLevel < this.maxDistortionLevel) {
-                try {
-                    this.recognition.start();
-                } catch (retryError) {
-                    console.error('Retry failed:', retryError);
-                }
+        if (shouldRestart && this.isListening) {
+            this.retryCount++;
+            if (this.retryCount <= this.maxRetries) {
+                this.updateAudioStatus(`Restarting... (${this.retryCount}/${this.maxRetries})`, '#ffff00');
+                // Restart recognition after a delay
+                setTimeout(() => {
+                    if (this.isListening && this.recognition) {
+                        try {
+                            this.recognition.start();
+                            this.updateAudioStatus('Listening for "I am human"', '#00ff00');
+                            console.log(`Speech recognition restarted (attempt ${this.retryCount})`);
+                        } catch (restartError) {
+                            console.error('Failed to restart speech recognition:', restartError);
+                            this.handleSpeechError('restart-failed');
+                        }
+                    }
+                }, this.retryDelay);
+            } else {
+                console.error('Max retries reached, falling back to alternative methods');
+                this.fallbackToAlternativeMethods();
             }
-        }, 3000);
+        } else {
+            this.updateAudioStatus('Error: ' + errorMessage, '#ff0000');
+            // Fall back to alternative methods for serious errors
+            setTimeout(() => {
+                this.fallbackToAlternativeMethods();
+            }, 2000);
+        }
     }
     
-    updateInstructions(message) {
-        this.instructions.innerHTML = `
-            <p>${message}</p>
-            <p class="command">"I am human"</p>
+    stopListening() {
+        this.isListening = false;
+        if (this.recognition) {
+            this.recognition.stop();
+        }
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+    }
+    
+    updateAudioStatus(status, color) {
+        if (this.audioStatusText) {
+            this.audioStatusText.textContent = status;
+            this.audioStatusText.style.color = color;
+        }
+    }
+    
+    fallbackToAlternativeMethods() {
+        console.log('Falling back to alternative input methods');
+        this.fallbackActive = true;
+        this.isListening = false;
+        this.retryCount = 0; // Reset retry counter
+        this.updateStatus('FALLBACK MODE', '#ffaa00');
+        this.updateInstructions('Speech recognition failed. Use keyboard or click controls to advance distortion.');
+        
+        // Enable fallback controls
+        this.enableFallbackControls();
+        
+        // Add a test button for debugging
+        this.addTestButton();
+    }
+    
+    addTestButton() {
+        const testButton = document.createElement('button');
+        testButton.textContent = 'TEST DISTORTION';
+        testButton.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ff6600;
+            color: #000;
+            border: 2px solid #ff6600;
+            padding: 10px 15px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            z-index: 1000;
         `;
+        testButton.onclick = () => {
+            console.log('Test button clicked - triggering distortion');
+            this.processHumanClaim();
+        };
+        document.body.appendChild(testButton);
     }
     
-    checkPhraseMatch(transcript) {
-        // Define all possible variations
-        const phrases = [
-            'i am human',
-            'i\'m human',
-            'i am a human',
-            'i\'m a human',
-            'i am the human',
-            'i\'m the human',
-            'i am human being',
-            'i\'m human being',
-            'i am a human being',
-            'i\'m a human being'
-        ];
-        
-        // Check if transcript contains any of our phrases
-        for (const phrase of phrases) {
-            if (transcript.includes(phrase)) {
-                console.log(`✅ Matched phrase: "${phrase}" in transcript: "${transcript}"`);
-                return true;
+    enableFallbackControls() {
+        // Add keyboard listener
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space' || event.key.toLowerCase() === 'h') {
+                event.preventDefault();
+                this.processHumanClaim();
             }
-        }
+        });
         
-        return false;
-    }
-    
-    showSpeechFeedback(transcript, confidence, isFinal) {
-        // Update the visual feedback element
-        const status = isFinal ? 'FINAL' : 'INTERIM';
-        const confidenceText = confidence !== 'N/A' ? ` (${Math.round(confidence * 100)}%)` : '';
-        
-        this.detectedText.textContent = `"${transcript}"${confidenceText} [${status}]`;
-        this.detectedText.className = `detected-text ${isFinal ? 'final' : 'interim'}`;
-        
-        // Update the instructions to show what was detected
-        this.updateInstructions(
-            `Detected: "${transcript}"${confidenceText} [${status}]`
-        );
-        
-        // Also update status with confidence
-        if (isFinal) {
-            this.updateStatus(`DETECTED: "${transcript}"`, '#ffff00');
-        }
+        // Add click listener to video
+        this.webcam.addEventListener('click', () => {
+            this.processHumanClaim();
+        });
     }
     
     setupEventListeners() {
@@ -282,8 +347,11 @@ class DigitalMirror {
         this.retryButton.addEventListener('click', () => {
             this.retryWebcam();
         });
-        
-        // No click handlers on video - audio only
+    }
+    
+    setupFallbackControls() {
+        // This will be called if audio detection fails
+        // Controls are enabled in fallbackToAlternativeMethods()
     }
     
     processHumanClaim() {
@@ -306,7 +374,8 @@ class DigitalMirror {
             }, 2000);
         } else {
             setTimeout(() => {
-                this.updateStatus('SYSTEM READY', '#00ff00');
+                this.updateStatus(this.audioContext ? 'LISTENING...' : 'FALLBACK MODE', 
+                                this.audioContext ? '#00ff00' : '#ffaa00');
             }, 1500);
         }
     }
@@ -361,12 +430,31 @@ class DigitalMirror {
         statusText.style.color = color;
     }
     
+    updateInstructions(message) {
+        this.instructions.innerHTML = `
+            <p>${message}</p>
+            <p class="command">"I am human"</p>
+            <p class="audio-only">AUDIO-ONLY INTERFACE</p>
+            <div class="audio-status" id="audio-status">
+                <p>Speech Recognition: <span id="audio-status-text">Ready</span></p>
+                <p class="recognition-hint">Say "I am human" clearly</p>
+            </div>
+        `;
+        
+        // Re-bind elements after DOM update
+        this.audioStatus = document.getElementById('audio-status');
+        this.audioStatusText = document.getElementById('audio-status-text');
+    }
+    
     showVerdict() {
         this.verdictOverlay.style.display = 'flex';
         this.overlay.style.display = 'none';
         
         // Add final distortion
         this.webcam.classList.add('distortion-5');
+        
+        // Stop listening
+        this.stopListening();
         
         // Animate verdict text
         setTimeout(() => {
@@ -377,6 +465,8 @@ class DigitalMirror {
     resetMirror() {
         this.distortionLevel = 0;
         this.humanityPercentage = 100;
+        this.lastTriggerTime = 0;
+        this.isProcessing = false;
         
         // Reset video element visual state completely
         this.webcam.className = '';
@@ -389,19 +479,23 @@ class DigitalMirror {
         this.verdictOverlay.style.display = 'none';
         this.overlay.style.display = 'block';
         this.instructions.style.display = 'block';
-        this.updateInstructions('Look into the mirror and say:');
         
-        // Clear speech feedback
-        this.detectedText.textContent = 'Listening...';
-        this.detectedText.className = 'detected-text';
-        
-        this.updateStatus('SYSTEM READY', '#00ff00');
-        this.humanityLevel.textContent = 'HUMANITY: 100%';
-        
-        // Restart speech recognition
-        if (this.recognition && !this.isListening) {
+        // Restart speech recognition if available
+        if (this.recognition) {
+            this.retryCount = 0; // Reset retry counter
             this.recognition.start();
+            this.isListening = true;
+            this.updateInstructions('Say "I am human" to trigger distortion.');
+            this.updateStatus('LISTENING...', '#00ff00');
+        } else if (this.fallbackActive) {
+            this.updateInstructions('Press SPACEBAR, H key, or click the mirror to advance distortion level.');
+            this.updateStatus('FALLBACK MODE', '#ffaa00');
+        } else {
+            this.updateInstructions('Look into the mirror and say:');
+            this.updateStatus('SYSTEM READY', '#00ff00');
         }
+        
+        this.humanityLevel.textContent = 'HUMANITY: 100%';
     }
     
     showError(customMessage = null) {
@@ -417,6 +511,8 @@ class DigitalMirror {
         try {
             await this.setupWebcam();
             this.overlay.style.display = 'block';
+            // Retry audio detection
+            await this.setupAudioDetection();
         } catch (error) {
             this.showError();
         }
@@ -434,23 +530,40 @@ class DigitalMirror {
         };
         animate();
     }
+    
+    // Cleanup method
+    cleanup() {
+        this.stopListening();
+        
+        if (this.audioContext) {
+            this.audioContext.close();
+        }
+        
+        if (this.webcam && this.webcam.srcObject) {
+            const tracks = this.webcam.srcObject.getTracks();
+            tracks.forEach(track => track.stop());
+        }
+    }
 }
 
 // Initialize the Digital Mirror when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    new DigitalMirror();
+    window.digitalMirror = new DigitalMirror();
 });
 
-// Handle page visibility changes - keep listening for audio
+// Handle page visibility changes - keep listening for speech
 document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
+    if (!document.hidden && window.digitalMirror) {
         // Resume speech recognition when tab becomes visible
-        if (window.digitalMirror && window.digitalMirror.recognition && !window.digitalMirror.isListening) {
-            try {
-                window.digitalMirror.recognition.start();
-            } catch (error) {
-                console.error('Failed to restart speech recognition on visibility change:', error);
-            }
+        if (window.digitalMirror.recognition && window.digitalMirror.isListening) {
+            window.digitalMirror.recognition.start();
         }
+    }
+});
+
+// Cleanup when page unloads
+window.addEventListener('beforeunload', () => {
+    if (window.digitalMirror) {
+        window.digitalMirror.cleanup();
     }
 });
