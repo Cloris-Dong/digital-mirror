@@ -19,8 +19,13 @@
                     </div>
                 </div>
                 <div class="instructions" id="instructions">
-                    <p>Look into the mirror and say:</p>
+                    <p>Look into the mirror and speak clearly:</p>
                     <p class="command">"I am human"</p>
+                    <p class="audio-only">AUDIO-ONLY INTERFACE</p>
+                    <div class="speech-feedback" id="speech-feedback">
+                        <div class="detection-status">Listening...</div>
+                        <div class="detected-text" id="detected-text"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -39,7 +44,7 @@
         </div>
         
         <div class="error-message" id="error-message">
-            <p>Webcam access denied. Please allow camera permissions to experience The Digital Mirror.</p>
+            <p>Camera and microphone access required. Please allow permissions to experience The Digital Mirror.</p>
             <button class="retry-button" id="retry-button">Retry</button>
         </div>
     </div>
