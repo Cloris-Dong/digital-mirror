@@ -30,7 +30,7 @@ class DigitalMirror {
         // CAPTCHA system properties
         this.currentCode = '';
         this.captchaTimerInterval = null;
-        this.timeRemaining = 5.0;
+        this.timeRemaining = 2.0;
         this.captchaAttempts = 0;
         
         // Audio analysis properties
@@ -537,7 +537,7 @@ class DigitalMirror {
     
     // Start countdown timer
     startCaptchaTimer() {
-        this.timeRemaining = 5.0;
+        this.timeRemaining = 2.0;
         this.captchaTimerInterval = setInterval(() => {
             this.timeRemaining -= 0.1;
             this.captchaTimer.textContent = `Time: ${this.timeRemaining.toFixed(1)}s`;
