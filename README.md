@@ -22,6 +22,14 @@ The Digital Mirror presents a webcam feed that progressively distorts each time 
 - **CSS3**: Advanced visual effects and animations
 - **Vanilla JavaScript**: No external dependencies
 
+## Setup Instructions
+
+1. **Clone or Download** this repository to your local machine
+2. **Open** `index.html` in a modern web browser
+3. **Allow** webcam and microphone permissions when prompted
+4. **Speak** the phrase "I am human" to experience the distortion
+5. **Click** the mirror as an alternative trigger for testing
+
 ## Browser Requirements
 
 - Modern browser with WebRTC support (Chrome, Firefox, Safari, Edge)
@@ -40,7 +48,20 @@ The Digital Mirror presents a webcam feed that progressively distorts each time 
 
 The Digital Mirror questions the nature of human identity in our increasingly digital world. As technology becomes more sophisticated at recognizing and categorizing human features, what does it mean to be "human" when a machine can reject that claim? The piece invites viewers to consider the relationship between self-perception, technological mediation, and the systems that define our digital existence.
 
+## File Structure
+
+```
+digital-mirror/
+├── index.html          # Main application file
+├── styles.css          # Cyberpunk styling and effects
+├── script.js           # Core functionality and interactions
+└── README.md           # Project documentation
+```
 
 ## Development
 
 This is a client-side web application that runs entirely in the browser. No server setup or build process is required. Simply open `index.html` in a web browser to run the application.
+
+## License
+
+This project is open source and available under the MIT License.

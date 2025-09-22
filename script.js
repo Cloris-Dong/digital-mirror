@@ -30,7 +30,7 @@ class DigitalMirror {
         // CAPTCHA system properties
         this.currentCode = '';
         this.captchaTimerInterval = null;
-        this.timeRemaining = 7.0; // Initial time limit
+        this.timeRemaining = 5.0;
         this.captchaAttempts = 0;
         
         // Audio analysis properties
@@ -526,24 +526,18 @@ class DigitalMirror {
         this.captchaStatus.textContent = '';
         this.captchaInput.focus();
         
-        // Calculate and display initial time limit
-        const timeLimit = 7.0 + (this.captchaLevel * 3.0);
-        this.captchaTimer.textContent = `Time: ${timeLimit.toFixed(1)}s`;
-        
         // Start countdown timer
         this.startCaptchaTimer();
         
         // Setup event listeners
         this.setupCaptchaEventListeners();
         
-        console.log(`Reverse CAPTCHA triggered (Level ${this.captchaLevel}). Hidden code: ${this.currentCode}, Time limit: ${timeLimit}s`);
+        console.log('Reverse CAPTCHA triggered. Hidden code:', this.currentCode);
     }
     
-    // Start countdown timer with progressive time limits
+    // Start countdown timer
     startCaptchaTimer() {
-        // Calculate time limit based on CAPTCHA level (7s, 10s, 13s, 16s, 19s)
-        this.timeRemaining = 7.0 + (this.captchaLevel * 3.0);
-        
+        this.timeRemaining = 5.0;
         this.captchaTimerInterval = setInterval(() => {
             this.timeRemaining -= 0.1;
             this.captchaTimer.textContent = `Time: ${this.timeRemaining.toFixed(1)}s`;
