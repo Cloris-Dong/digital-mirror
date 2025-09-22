@@ -15,6 +15,7 @@ class DigitalMirror {
         this.captchaSubmit = document.getElementById('captcha-submit');
         this.captchaTimer = document.getElementById('captcha-timer');
         this.captchaStatus = document.getElementById('captcha-status');
+        this.failureOverlay = document.getElementById('failure-overlay');
         this.verdictOverlay = document.getElementById('verdict-overlay');
         this.verdictText = document.getElementById('verdict-text');
         this.resetButton = document.getElementById('reset-button');
@@ -382,6 +383,14 @@ class DigitalMirror {
         // Update humanity level display
         this.humanityLevel.textContent = `POTENTIAL HUMANITY: ${this.humanityPercentage}%`;
         
+        // Check if humanity reached 0%
+        if (this.humanityPercentage <= 0) {
+            setTimeout(() => {
+                this.showFailurePage();
+            }, 1000);
+            return;
+        }
+        
         // Update instruction visibility
         if (this.captchaLevel >= this.maxCaptchaLevel) {
             this.cleanInstruction.style.display = 'none';
@@ -609,7 +618,7 @@ class DigitalMirror {
     // Handle CAPTCHA timeout
     handleCaptchaTimeout() {
         clearInterval(this.captchaTimerInterval);
-        this.captchaStatus.textContent = 'TIME EXPIRED - Human cognitive limitations confirmed';
+        this.captchaStatus.textContent = 'TIME EXPIRED - Cognitive limitations confirmed';
         this.captchaStatus.style.color = '#ff0000';
         
         setTimeout(() => {
@@ -620,6 +629,17 @@ class DigitalMirror {
     }
     
     
+    
+    showFailurePage() {
+        this.failureOverlay.style.display = 'flex';
+        this.captchaOverlay.style.display = 'none';
+        this.overlay.style.display = 'none';
+        
+        // Stop listening
+        this.stopListening();
+        
+        console.log('Humanity reached 0% - showing failure page');
+    }
     
     showVerdict() {
         this.verdictOverlay.style.display = 'flex';
@@ -647,6 +667,7 @@ class DigitalMirror {
         
         // Reset UI
         this.verdictOverlay.style.display = 'none';
+        this.failureOverlay.style.display = 'none';
         this.captchaOverlay.style.display = 'none';
         this.overlay.style.display = 'block';
         this.cleanInstruction.style.display = 'block';

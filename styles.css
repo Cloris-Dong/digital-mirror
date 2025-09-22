@@ -232,6 +232,62 @@ body {
     min-height: 20px;
 }
 
+.failure-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.95);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+
+.failure-content {
+    text-align: center;
+    background: #000;
+    border: 3px solid #ffff00;
+    border-radius: 10px;
+    padding: 40px;
+    max-width: 600px;
+    box-shadow: 0 0 30px #ffff00;
+}
+
+.failure-content h1 {
+    color: #ffff00;
+    font-size: 2.5em;
+    margin-bottom: 20px;
+    text-shadow: 0 0 20px #ffff00;
+    font-family: 'Courier New', monospace;
+}
+
+.failure-text {
+    color: #ff0000;
+    font-size: 1.8em;
+    margin-bottom: 20px;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    text-shadow: 0 0 10px #ff0000;
+}
+
+.failure-message {
+    color: #ffffff;
+    font-size: 1.1em;
+    margin-bottom: 20px;
+    line-height: 1.5;
+    font-family: 'Courier New', monospace;
+}
+
+.failure-subtext {
+    color: #ffff00;
+    font-size: 1em;
+    margin-bottom: 30px;
+    font-style: italic;
+    font-family: 'Courier New', monospace;
+}
+
 .verdict-overlay {
     position: fixed;
     top: 0;
