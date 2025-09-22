@@ -30,8 +30,10 @@ class DigitalMirror {
         // CAPTCHA system properties
         this.currentCode = '';
         this.captchaTimerInterval = null;
-        this.timeRemaining = 2.0;
+        this.timeRemaining = 5.0;
         this.captchaAttempts = 0;
+        this.baseCaptchaTime = 5.0; // Start at 5 seconds
+        this.timeIncrement = 2.0;   // Add 2 seconds each time
         
         // Audio analysis properties
         this.audioContext = null;
@@ -537,7 +539,9 @@ class DigitalMirror {
     
     // Start countdown timer
     startCaptchaTimer() {
-        this.timeRemaining = 2.0;
+        // Calculate time for this level: 5s + (level-1) * 2s
+        this.timeRemaining = this.baseCaptchaTime + ((this.captchaLevel - 1) * this.timeIncrement);
+        
         this.captchaTimerInterval = setInterval(() => {
             this.timeRemaining -= 0.1;
             this.captchaTimer.textContent = `Time: ${this.timeRemaining.toFixed(1)}s`;
@@ -546,6 +550,8 @@ class DigitalMirror {
                 this.handleCaptchaTimeout();
             }
         }, 100);
+        
+        console.log(`CAPTCHA Level ${this.captchaLevel}: ${this.timeRemaining.toFixed(1)} seconds allowed`);
     }
     
     // Setup CAPTCHA event listeners
