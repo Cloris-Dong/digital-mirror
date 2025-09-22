@@ -9,17 +9,29 @@ class DigitalMirror {
         this.humanityLevel = document.getElementById('humanity-level');
         this.cleanInstruction = document.getElementById('clean-instruction');
         this.listeningIndicator = document.getElementById('listening-indicator');
+        this.captchaOverlay = document.getElementById('captcha-overlay');
+        this.captchaCanvas = document.getElementById('captcha-canvas');
+        this.captchaInput = document.getElementById('captcha-input');
+        this.captchaSubmit = document.getElementById('captcha-submit');
+        this.captchaTimer = document.getElementById('captcha-timer');
+        this.captchaStatus = document.getElementById('captcha-status');
         this.verdictOverlay = document.getElementById('verdict-overlay');
         this.verdictText = document.getElementById('verdict-text');
         this.resetButton = document.getElementById('reset-button');
         this.errorMessage = document.getElementById('error-message');
         this.retryButton = document.getElementById('retry-button');
         
-        this.distortionLevel = 0;
-        this.maxDistortionLevel = 5;
+        this.captchaLevel = 0;
+        this.maxCaptchaLevel = 5;
         this.humanityPercentage = 100;
         this.isListening = false;
         this.fallbackActive = false;
+        
+        // CAPTCHA system properties
+        this.currentCode = '';
+        this.captchaTimerInterval = null;
+        this.timeRemaining = 7.0; // Initial time limit
+        this.captchaAttempts = 0;
         
         // Audio analysis properties
         this.audioContext = null;
@@ -348,83 +360,270 @@ class DigitalMirror {
     }
     
     processHumanClaim() {
-        if (this.distortionLevel >= this.maxDistortionLevel) {
-            return; // Already at maximum distortion
+        if (this.captchaLevel >= this.maxCaptchaLevel) {
+            return; // Already at maximum level
         }
         
-        this.distortionLevel++;
-        this.humanityPercentage = Math.max(0, 100 - (this.distortionLevel * 20));
+        this.captchaLevel++;
+        this.humanityPercentage = Math.max(0, 100 - (this.captchaLevel * 20));
         
-        this.updateDistortion();
+        this.updateHumanityLevel();
         this.showListeningIndicator('Processing...');
         
-        // Add glitch effect
-        this.addGlitchEffect();
-        
-        if (this.distortionLevel >= this.maxDistortionLevel) {
-            setTimeout(() => {
-                this.showVerdict();
-            }, 2000);
-        } else {
-            setTimeout(() => {
-                if (this.recognition) {
-                    this.showListeningIndicator('Listening...');
-                } else {
-                    this.showListeningIndicator('Fallback Mode');
-                }
-            }, 1500);
-        }
+        // Trigger reverse CAPTCHA challenge
+        setTimeout(() => {
+            this.triggerReverseCAPTCHA();
+        }, 1000);
     }
     
-    updateDistortion() {
-        // Remove previous distortion classes from video element only
-        this.webcam.className = '';
-        
-        // Apply new distortion level to video element
-        if (this.distortionLevel > 0) {
-            this.webcam.classList.add(`distortion-${this.distortionLevel}`);
-        }
-        
+    updateHumanityLevel() {
         // Update humanity level display
-        this.humanityLevel.textContent = `HUMANITY: ${this.humanityPercentage}%`;
+        this.humanityLevel.textContent = `POTENTIAL HUMANITY: ${this.humanityPercentage}%`;
         
         // Update instruction visibility
-        if (this.distortionLevel >= this.maxDistortionLevel) {
+        if (this.captchaLevel >= this.maxCaptchaLevel) {
             this.cleanInstruction.style.display = 'none';
         }
     }
     
-    addGlitchEffect() {
-        const glitchDuration = 500;
-        const startTime = Date.now();
+    // Seven-segment digit patterns for machine-readable encoding
+    getSevenSegmentPattern(digit) {
+        const patterns = {
+            '0': [1,1,1,0,1,1,1], // a,b,c,d,e,f
+            '1': [0,0,1,0,0,1,0], // a,b,c,d,e,f
+            '2': [1,0,1,1,1,0,1], // a,b,c,d,e,f
+            '3': [1,0,1,1,0,1,1], // a,b,c,d,e,f
+            '4': [0,1,1,1,0,1,0], // a,b,c,d,e,f
+            '5': [1,1,0,1,0,1,1], // a,b,c,d,e,f
+            '6': [1,1,0,1,1,1,1], // a,b,c,d,e,f
+            '7': [1,0,1,0,0,1,0], // a,b,c,d,e,f
+            '8': [1,1,1,1,1,1,1], // a,b,c,d,e,f
+            '9': [1,1,1,1,0,1,1]  // a,b,c,d,e,f
+        };
+        return patterns[digit] || [0,0,0,0,0,0,0];
+    }
+    
+    // Generate 8-digit random code
+    generateRandomCode() {
+        let code = '';
+        for (let i = 0; i < 8; i++) {
+            code += Math.floor(Math.random() * 10).toString();
+        }
+        return code;
+    }
+    
+    // Create steganographic bitmap with hidden code
+    createSteganographicBitmap(code) {
+        const canvas = this.captchaCanvas;
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
         
-        const glitch = () => {
-            const elapsed = Date.now() - startTime;
-            const progress = elapsed / glitchDuration;
+        // Create image data
+        const imageData = ctx.createImageData(width, height);
+        const data = imageData.data;
+        
+        // Fill with near-white background (254,254,254)
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = 254;     // Red
+            data[i + 1] = 254; // Green
+            data[i + 2] = 254; // Blue
+            data[i + 3] = 255; // Alpha
+        }
+        
+        // Draw seven-segment digits in blue channel with minimal contrast
+        const digitWidth = Math.floor(width / 8);
+        const digitHeight = height;
+        const segmentThickness = 2;
+        
+        for (let i = 0; i < code.length; i++) {
+            const digit = code[i];
+            const pattern = this.getSevenSegmentPattern(digit);
+            const startX = i * digitWidth;
             
-            if (progress < 1) {
-                // Random glitch effects
-                const randomOffset = (Math.random() - 0.5) * 4;
-                this.webcam.style.transform = `translate(${randomOffset}px, ${randomOffset}px)`;
-                this.webcam.style.filter += ` hue-rotate(${Math.random() * 360}deg)`;
-                
-                requestAnimationFrame(glitch);
-            } else {
-                // Reset transform
-                this.webcam.style.transform = '';
+            // Draw segments based on pattern
+            this.drawSevenSegmentDigit(data, width, startX, 0, digitWidth, digitHeight, pattern, segmentThickness);
+        }
+        
+        // Put image data on canvas
+        ctx.putImageData(imageData, 0, 0);
+    }
+    
+    // Draw a seven-segment digit
+    drawSevenSegmentDigit(data, width, startX, startY, digitWidth, digitHeight, pattern, thickness) {
+        const centerX = startX + digitWidth / 2;
+        const centerY = startY + digitHeight / 2;
+        const segmentLength = Math.min(digitWidth, digitHeight) * 0.3;
+        
+        // Segment positions (a,b,c,d,e,f,g)
+        const segments = [
+            // a (top)
+            { x1: centerX - segmentLength/2, y1: centerY - segmentLength/2, x2: centerX + segmentLength/2, y2: centerY - segmentLength/2 },
+            // b (top-right)
+            { x1: centerX + segmentLength/2, y1: centerY - segmentLength/2, x2: centerX + segmentLength/2, y2: centerY },
+            // c (bottom-right)
+            { x1: centerX + segmentLength/2, y1: centerY, x2: centerX + segmentLength/2, y2: centerY + segmentLength/2 },
+            // d (bottom)
+            { x1: centerX - segmentLength/2, y1: centerY + segmentLength/2, x2: centerX + segmentLength/2, y2: centerY + segmentLength/2 },
+            // e (bottom-left)
+            { x1: centerX - segmentLength/2, y1: centerY, x2: centerX - segmentLength/2, y2: centerY + segmentLength/2 },
+            // f (top-left)
+            { x1: centerX - segmentLength/2, y1: centerY - segmentLength/2, x2: centerX - segmentLength/2, y2: centerY },
+            // g (middle)
+            { x1: centerX - segmentLength/2, y1: centerY, x2: centerX + segmentLength/2, y2: centerY }
+        ];
+        
+        // Draw active segments
+        for (let i = 0; i < pattern.length; i++) {
+            if (pattern[i] === 1) {
+                this.drawSegment(data, width, segments[i], thickness);
+            }
+        }
+    }
+    
+    // Draw a single segment line
+    drawSegment(data, width, segment, thickness) {
+        const { x1, y1, x2, y2 } = segment;
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const steps = Math.ceil(length);
+        
+        for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            const x = Math.round(x1 + dx * t);
+            const y = Math.round(y1 + dy * t);
+            
+            // Draw thickness around the point
+            for (let dx = -thickness; dx <= thickness; dx++) {
+                for (let dy = -thickness; dy <= thickness; dy++) {
+                    const px = x + dx;
+                    const py = y + dy;
+                    if (px >= 0 && px < width && py >= 0 && py < data.length / (4 * width)) {
+                        const index = (py * width + px) * 4;
+                        // Set blue channel to 255 (code pixel)
+                        data[index + 2] = 255;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Trigger reverse CAPTCHA challenge
+    triggerReverseCAPTCHA() {
+        // Generate new code
+        this.currentCode = this.generateRandomCode();
+        
+        // Create steganographic image
+        this.createSteganographicBitmap(this.currentCode);
+        
+        // Show CAPTCHA overlay
+        this.captchaOverlay.style.display = 'flex';
+        this.overlay.style.display = 'none';
+        
+        // Reset input and status
+        this.captchaInput.value = '';
+        this.captchaStatus.textContent = '';
+        this.captchaInput.focus();
+        
+        // Calculate and display initial time limit
+        const timeLimit = 7.0 + (this.captchaLevel * 3.0);
+        this.captchaTimer.textContent = `Time: ${timeLimit.toFixed(1)}s`;
+        
+        // Start countdown timer
+        this.startCaptchaTimer();
+        
+        // Setup event listeners
+        this.setupCaptchaEventListeners();
+        
+        console.log(`Reverse CAPTCHA triggered (Level ${this.captchaLevel}). Hidden code: ${this.currentCode}, Time limit: ${timeLimit}s`);
+    }
+    
+    // Start countdown timer with progressive time limits
+    startCaptchaTimer() {
+        // Calculate time limit based on CAPTCHA level (7s, 10s, 13s, 16s, 19s)
+        this.timeRemaining = 7.0 + (this.captchaLevel * 3.0);
+        
+        this.captchaTimerInterval = setInterval(() => {
+            this.timeRemaining -= 0.1;
+            this.captchaTimer.textContent = `Time: ${this.timeRemaining.toFixed(1)}s`;
+            
+            if (this.timeRemaining <= 0) {
+                this.handleCaptchaTimeout();
+            }
+        }, 100);
+    }
+    
+    // Setup CAPTCHA event listeners
+    setupCaptchaEventListeners() {
+        this.captchaSubmit.onclick = () => this.submitCaptcha();
+        this.captchaInput.onkeypress = (e) => {
+            if (e.key === 'Enter') {
+                this.submitCaptcha();
             }
         };
-        
-        glitch();
     }
+    
+    // Submit CAPTCHA answer
+    submitCaptcha() {
+        const userInput = this.captchaInput.value.trim();
+        
+        if (userInput === this.currentCode) {
+            this.handleCaptchaSuccess();
+        } else {
+            this.handleCaptchaFailure();
+        }
+    }
+    
+    // Handle successful CAPTCHA (machine behavior detected)
+    handleCaptchaSuccess() {
+        clearInterval(this.captchaTimerInterval);
+        this.captchaStatus.textContent = 'VERIFICATION SUCCESSFUL - Machine behavior detected';
+        this.captchaStatus.style.color = '#00ff00';
+        
+        setTimeout(() => {
+            this.captchaOverlay.style.display = 'none';
+            this.overlay.style.display = 'block';
+            
+            if (this.captchaLevel >= this.maxCaptchaLevel) {
+                this.showVerdict();
+            } else {
+                this.showListeningIndicator('Listening...');
+            }
+        }, 2000);
+    }
+    
+    // Handle failed CAPTCHA (human limitations detected)
+    handleCaptchaFailure() {
+        clearInterval(this.captchaTimerInterval);
+        this.captchaStatus.textContent = 'VERIFICATION FAILED - Human limitations detected';
+        this.captchaStatus.style.color = '#ff0000';
+        
+        setTimeout(() => {
+            this.captchaOverlay.style.display = 'none';
+            this.overlay.style.display = 'block';
+            this.showListeningIndicator('Listening...');
+        }, 2000);
+    }
+    
+    // Handle CAPTCHA timeout
+    handleCaptchaTimeout() {
+        clearInterval(this.captchaTimerInterval);
+        this.captchaStatus.textContent = 'TIME EXPIRED - Human cognitive limitations confirmed';
+        this.captchaStatus.style.color = '#ff0000';
+        
+        setTimeout(() => {
+            this.captchaOverlay.style.display = 'none';
+            this.overlay.style.display = 'block';
+            this.showListeningIndicator('Listening...');
+        }, 2000);
+    }
+    
     
     
     showVerdict() {
         this.verdictOverlay.style.display = 'flex';
         this.overlay.style.display = 'none';
-        
-        // Add final distortion
-        this.webcam.classList.add('distortion-5');
         
         // Stop listening
         this.stopListening();
@@ -436,20 +635,19 @@ class DigitalMirror {
     }
     
     resetMirror() {
-        this.distortionLevel = 0;
+        this.captchaLevel = 0;
         this.humanityPercentage = 100;
         this.lastTriggerTime = 0;
         this.isProcessing = false;
         
-        // Reset video element visual state completely
-        this.webcam.className = '';
-        this.webcam.style.transform = '';
-        this.webcam.style.filter = '';
-        this.webcam.style.opacity = '';
-        this.webcam.style.clipPath = '';
+        // Clear any active timers
+        if (this.captchaTimerInterval) {
+            clearInterval(this.captchaTimerInterval);
+        }
         
         // Reset UI
         this.verdictOverlay.style.display = 'none';
+        this.captchaOverlay.style.display = 'none';
         this.overlay.style.display = 'block';
         this.cleanInstruction.style.display = 'block';
         
@@ -465,7 +663,7 @@ class DigitalMirror {
             this.showListeningIndicator('');
         }
         
-        this.humanityLevel.textContent = 'HUMANITY: 100%';
+        this.humanityLevel.textContent = 'POTENTIAL HUMANITY: 100%';
     }
     
     showError(customMessage = null) {
@@ -504,6 +702,11 @@ class DigitalMirror {
     // Cleanup method
     cleanup() {
         this.stopListening();
+        
+        // Clear CAPTCHA timer
+        if (this.captchaTimerInterval) {
+            clearInterval(this.captchaTimerInterval);
+        }
         
         if (this.audioContext) {
             this.audioContext.close();

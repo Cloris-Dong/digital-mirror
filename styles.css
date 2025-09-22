@@ -119,6 +119,119 @@ body {
     border: 1px solid #00ff00;
 }
 
+.captcha-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.95);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+
+.captcha-content {
+    background: #000;
+    border: 2px solid #00ff00;
+    border-radius: 10px;
+    padding: 40px;
+    text-align: center;
+    max-width: 500px;
+    width: 90%;
+}
+
+.captcha-content h1 {
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px #00ff00;
+}
+
+.captcha-instruction {
+    color: #ffffff;
+    font-family: 'Courier New', monospace;
+    font-size: 1rem;
+    margin-bottom: 20px;
+}
+
+.captcha-timer {
+    color: #ff0000;
+    font-family: 'Courier New', monospace;
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px #ff0000;
+}
+
+.captcha-image-container {
+    margin: 20px 0;
+    border: 1px solid #00ff00;
+    border-radius: 5px;
+    padding: 10px;
+    background: #111;
+}
+
+#captcha-canvas {
+    border: 1px solid #333;
+    border-radius: 3px;
+    background: #fefefe;
+}
+
+.captcha-input-container {
+    margin: 20px 0;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+}
+
+#captcha-input {
+    background: #000;
+    border: 1px solid #00ff00;
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    font-size: 1.2rem;
+    padding: 10px 15px;
+    border-radius: 5px;
+    width: 200px;
+    text-align: center;
+    letter-spacing: 2px;
+}
+
+#captcha-input:focus {
+    outline: none;
+    box-shadow: 0 0 10px #00ff00;
+}
+
+#captcha-submit {
+    background: #00ff00;
+    color: #000;
+    border: none;
+    font-family: 'Courier New', monospace;
+    font-size: 1rem;
+    font-weight: bold;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#captcha-submit:hover {
+    background: #00cc00;
+    box-shadow: 0 0 10px #00ff00;
+}
+
+.captcha-status {
+    color: #ffff00;
+    font-family: 'Courier New', monospace;
+    font-size: 1rem;
+    margin-top: 15px;
+    min-height: 20px;
+}
+
 .verdict-overlay {
     position: fixed;
     top: 0;
